@@ -11,15 +11,6 @@ RESUME_SEARCH=${RESUME_SEARCH:-}
 CANARY_FILE=${CANARY_FILE:-'/tmp/canaryFile'}
 QUERY=''
 
-# If we only have one directory to search, invoke commands relative to that directory
-PATHS=("$@")
-SINGLE_DIR_ROOT=''
-if [ ${#PATHS[@]} -eq 1 ]; then
-  SINGLE_DIR_ROOT=${PATHS[0]}
-  PATHS=()
-  cd "$SINGLE_DIR_ROOT" || exit
-fi
-
 if [[ "$RESUME_SEARCH" -eq 1 ]]; then
     # ... or we resume the last search if that is desired
     if [[ -f "$LAST_QUERY_FILE" ]]; then
@@ -57,12 +48,15 @@ if [[ -z "$VAL" ]]; then
     echo "1" > "$CANARY_FILE"
     exit 1
 else
-    if [[ -n "$SINGLE_DIR_ROOT" ]]; then
-        TMP=$(mktemp)
-        echo "$VAL" > "$TMP"
-        sed "s|^|$SINGLE_DIR_ROOT/|" "$TMP" > "$CANARY_FILE"
-        rm "$TMP"
-    else
-        echo "$VAL" > "$CANARY_FILE"
-    fi
+    # Convert relative paths to absolute paths
+    TMP=$(mktemp)
+    echo "$VAL" > "$TMP"
+    while IFS= read -r line; do
+        if [[ "$line" = /* ]]; then
+            echo "$line"
+        else
+            echo "$PWD/$line"
+        fi
+    done < "$TMP" > "$CANARY_FILE"
+    rm "$TMP"
 fi
