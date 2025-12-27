@@ -34,7 +34,7 @@ search functionality quite slow), or when you simply love using `fzf` and `rg` a
 bring those tools inside VS Code, similar to how the excellent `fzf.vim` plugin works for Vim.
 
 This extension exposes four commands:
-1. Search for files and open them. Uses a combination of `fzf`, `rg`, and `bat`.
+1. Search for files and open them. Uses `fzf` with your configured file listing command and `bat` for preview.
 2. Search within files for text and open them. Uses a combination of `fzf`, `rg`, and `bat`.
 3. Like 2., but you can limit the file types that will be searched.
 4. Resume search. Repeats the last run command with the previous query prepopulated.
@@ -78,10 +78,26 @@ into a VS Code context.
 
 ## Extension Settings
 
-See the settings for this extension in the GUI.  
+See the settings for this extension in the GUI.
 You might want to play with `fzf`, `rg` and `bat` on the command line and read their manuals in
 order to get a better understanding of some of the settings in this extension. It will be worth
 your time.
+
+### File Listing Command
+
+The `find-it-faster.general.fzfDefaultCommand` setting controls how files are listed for the file
+search command. Set this to your preferred file listing command. Examples:
+
+```json
+// Using fd with custom ignore file
+"find-it-faster.general.fzfDefaultCommand": "fd --type f --hidden --no-ignore-vcs --exclude .git --ignore-file .fzfignore"
+
+// Using ripgrep
+"find-it-faster.general.fzfDefaultCommand": "rg --files --hidden --glob '!.git'"
+
+// Using find
+"find-it-faster.general.fzfDefaultCommand": "find . -type f"
+```
 
 `fzf` can also be configured through various environment variables. This extension does nothing to
 disable that behavior, so feel free to use those. You can also check whether `fzf` is running inside
@@ -132,10 +148,9 @@ more about using `fzf`.
   ```
 
 ### 🔍 _There's a file that cannot be found / searched through?_
-➥ This extension enables you to search through multiple directories: the process working directory,
-  the workspace directories, and any additional directories you specify in the extension settings.
-  What paths are included is configured through the settings. There's a `listSearchLocations`
-  command that can show you which paths are currently being indexed.
+➥ Check your `fzfDefaultCommand` setting. The file listing is controlled entirely by the command
+  you configure there. Make sure your command includes the directories you want to search and
+  doesn't exclude the file types you're looking for.
 
 ### 🧘 _Can you give focus back to my editor / my problems panel / other?_
 ➥ I don't the VS Code API enables me to do this. Shoot me a message if you think I'm mistaken and
@@ -184,6 +199,14 @@ fi
 <hr />
 
 ## Release Notes
+
+### 0.0.40
+- Added `fzfDefaultCommand` setting to configure custom file listing command
+- Simplified extension by removing search path management settings
+- File listing now relies entirely on user-configured command (e.g., `fd`, `rg --files`, etc.)
+- Removed settings: `useGitIgnoreExcludes`, `useWorkspaceSearchExcludes`, `additionalSearchLocations`,
+  `additionalSearchLocationsWhen`, `searchWorkspaceFolders`, `searchCurrentWorkingDirectory`
+- Removed `listSearchLocations` command
 
 ### 0.0.39
 - Add option to set a shell path to enable running with a non-default shell
