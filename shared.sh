@@ -6,7 +6,7 @@
 array_join() {
     if [[ $# -gt 0 ]]; then
         for arg in "$@"; do
-            printf "'%s' " "${arg}"
+            printf "%s " "${arg}"
         done
     fi
 }

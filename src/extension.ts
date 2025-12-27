@@ -204,6 +204,7 @@ interface Config {
     useTerminalInEditor: boolean,
     shellPathForTerminal: string,
     shellArgsForTerminal: string[] | undefined,
+    fzfDefaultCommand: string,
 };
 const CFG: Config = {
     extensionName: undefined,
@@ -248,6 +249,7 @@ const CFG: Config = {
     useTerminalInEditor: false,
     shellPathForTerminal: '',
     shellArgsForTerminal: undefined,
+    fzfDefaultCommand: '',
 };
 
 /** Ensure that whatever command we expose in package.json actually exists */
@@ -345,6 +347,7 @@ function updateConfigWithUserSettings() {
     CFG.useTerminalInEditor = getCFG('general.useTerminalInEditor');
     CFG.shellPathForTerminal = getCFG('general.shellPathForTerminal');
     CFG.shellArgsForTerminal = getCFG('general.shellArgsForTerminal');
+    CFG.fzfDefaultCommand = getCFG('general.fzfDefaultCommand');
 }
 
 function collectSearchLocations() {
@@ -697,6 +700,7 @@ function createTerminal() {
             EXPLAIN_FILE: path.join(CFG.tempDir, 'paths_explain'),
             BAT_THEME: CFG.batTheme,
             FUZZ_RG_QUERY: CFG.fuzzRipgrepQuery ? '1' : '0',
+            FZF_DEFAULT_COMMAND: CFG.fzfDefaultCommand,
             /* eslint-enable @typescript-eslint/naming-convention */
         },
     };

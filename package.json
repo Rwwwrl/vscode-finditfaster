@@ -121,6 +121,11 @@
           "type": "boolean",
           "default": true
         },
+        "find-it-faster.general.fzfDefaultCommand": {
+          "markdownDescription": "Custom command to list files for fzf. If set, this overrides the default `rg` command and ignores `useGitIgnoreExcludes` and `useWorkspaceSearchExcludes` settings. Example: `fd --type f --hidden --no-ignore-vcs --exclude .git`",
+          "type": "string",
+          "default": ""
+        },
         "find-it-faster.general.additionalSearchLocations": {
           "markdownDescription": "Search files in these locations",
           "type": "array",

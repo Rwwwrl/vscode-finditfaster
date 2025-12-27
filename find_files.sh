@@ -40,14 +40,7 @@ if [[ "$PREVIEW_ENABLED" -eq 1 ]]; then
 fi
 
 callfzf () {
-    rg \
-        --files \
-        --hidden \
-        $(array_join ${USE_GITIGNORE_OPT+"${USE_GITIGNORE_OPT[@]}"}) \
-        --glob '!**/.git/' \
-        ${GLOBS[@]+"${GLOBS[@]}"} \
-        ${TYPE_FILTER_ARR[@]+"${TYPE_FILTER_ARR[@]}"} \
-        ${PATHS[@]+"${PATHS[@]}"} \
+    ${FZF_DEFAULT_COMMAND} \
         2> /dev/null \
     | fzf \
         --cycle \
