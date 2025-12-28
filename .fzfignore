@@ -1,0 +1,11 @@
+out
+dist
+node_modules
+.vscode-test/
+*.vsix
+**/*.swp
+**/.DS_Store
+releases
+.snitch
+screencaps
+workspace2.code-workspace

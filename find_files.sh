@@ -3,9 +3,6 @@ set -uo pipefail  # No -e to support write to canary file after cancel
 
 . "$EXTENSION_PATH/shared.sh"
 
-PREVIEW_ENABLED=${FIND_FILES_PREVIEW_ENABLED:-1}
-PREVIEW_COMMAND=${FIND_FILES_PREVIEW_COMMAND:-'bat --decorations=always --color=always --plain {}'}
-PREVIEW_WINDOW=${FIND_FILES_PREVIEW_WINDOW_CONFIG:-'right:50%:border-left'}
 HAS_SELECTION=${HAS_SELECTION:-}
 RESUME_SEARCH=${RESUME_SEARCH:-}
 CANARY_FILE=${CANARY_FILE:-'/tmp/canaryFile'}
@@ -20,16 +17,6 @@ elif [[ "$HAS_SELECTION" -eq 1 ]]; then
     QUERY="$(cat "$SELECTION_FILE")"
 fi
 
-# Some backwards compatibility stuff
-if [[ $FZF_VER_PT1 == "0.2" && $FZF_VER_PT2 -lt 7 ]]; then
-    PREVIEW_WINDOW='right:50%'
-fi
-
-PREVIEW_STR=()
-if [[ "$PREVIEW_ENABLED" -eq 1 ]]; then
-    PREVIEW_STR=(--preview "$PREVIEW_COMMAND" --preview-window "$PREVIEW_WINDOW")
-fi
-
 callfzf () {
     ${FZF_DEFAULT_COMMAND} \
         2> /dev/null \
@@ -37,8 +24,7 @@ callfzf () {
         --cycle \
         --multi \
         --history $LAST_QUERY_FILE \
-        --query "${QUERY}" \
-        ${PREVIEW_STR[@]+"${PREVIEW_STR[@]}"}
+        --query "${QUERY}"
 }
 
 VAL=$(callfzf)

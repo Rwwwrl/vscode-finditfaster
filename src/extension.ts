@@ -57,12 +57,6 @@ const commands: { [key: string]: Command } = {
         preRunCallback: selectTypeFilter,
         postRunCallback: () => { CFG.useTypeFilter = false; },
     },
-    flightCheck: {
-        script: 'flight_check',
-        uri: undefined,
-        preRunCallback: undefined,
-        postRunCallback: undefined,
-    },
     resumeSearch: {
         script: 'resume_search', // Dummy. We will set the uri from the last-run script. But we will use this value to check whether we are resuming.
         uri: undefined,
@@ -150,14 +144,7 @@ async function selectTypeFilter() {
 /** Global variable cesspool erm, I mean, Configuration Data Structure! It does the job for now. */
 interface Config {
     extensionName: string | undefined,
-    disableStartupChecks: boolean,
     useEditorSelectionAsQuery: boolean,
-    findFilesPreviewEnabled: boolean,
-    findFilesPreviewCommand: string,
-    findFilesPreviewWindowConfig: string,
-    findWithinFilesPreviewEnabled: boolean,
-    findWithinFilesPreviewCommand: string,
-    findWithinFilesPreviewWindowConfig: string,
     findWithinFilesFilter: Set<string>,
     canaryFile: string,
     selectionFile: string,
@@ -167,7 +154,6 @@ interface Config {
     hideTerminalAfterFail: boolean,
     clearTerminalAfterUse: boolean,
     showMaximizedTerminal: boolean,
-    flightCheckPassed: boolean,
     extensionPath: string,
     tempDir: string,
     useTypeFilter: boolean,
@@ -184,14 +170,7 @@ interface Config {
 };
 const CFG: Config = {
     extensionName: undefined,
-    disableStartupChecks: false,
     useEditorSelectionAsQuery: true,
-    findFilesPreviewEnabled: true,
-    findFilesPreviewCommand: '',
-    findFilesPreviewWindowConfig: '',
-    findWithinFilesPreviewEnabled: true,
-    findWithinFilesPreviewCommand: '',
-    findWithinFilesPreviewWindowConfig: '',
     findWithinFilesFilter: new Set(),
     canaryFile: '',
     selectionFile: '',
@@ -201,7 +180,6 @@ const CFG: Config = {
     hideTerminalAfterFail: false,
     clearTerminalAfterUse: false,
     showMaximizedTerminal: false,
-    flightCheckPassed: false,
     extensionPath: '',
     tempDir: '',
     useTypeFilter: false,
@@ -234,7 +212,6 @@ function setupConfig(context: vscode.ExtensionContext) {
     commands.findFilesWithType.uri = localScript(commands.findFiles.script);
     commands.findWithinFiles.uri = localScript(commands.findWithinFiles.script);
     commands.findWithinFilesWithType.uri = localScript(commands.findWithinFiles.script);
-    commands.flightCheck.uri = localScript(commands.flightCheck.script);
 }
 
 /** Register the commands we defined with VS Code so users have access to them */
@@ -284,7 +261,6 @@ function updateConfigWithUserSettings() {
         return ret;
     }
 
-    CFG.disableStartupChecks = getCFG('advanced.disableStartupChecks');
     CFG.useEditorSelectionAsQuery = getCFG('advanced.useEditorSelectionAsQuery');
     CFG.hideTerminalAfterSuccess = getCFG('general.hideTerminalAfterSuccess');
     CFG.hideTerminalAfterFail = getCFG('general.hideTerminalAfterFail');
@@ -292,13 +268,7 @@ function updateConfigWithUserSettings() {
     CFG.killTerminalAfterUse = getCFG('general.killTerminalAfterUse');
     CFG.showMaximizedTerminal = getCFG('general.showMaximizedTerminal');
     CFG.batTheme = getCFG('general.batTheme');
-    CFG.openFileInPreviewEditor = getCFG('general.openFileInPreviewEditor'),
-        CFG.findFilesPreviewEnabled = getCFG('findFiles.showPreview');
-    CFG.findFilesPreviewCommand = getCFG('findFiles.previewCommand');
-    CFG.findFilesPreviewWindowConfig = getCFG('findFiles.previewWindowConfig');
-    CFG.findWithinFilesPreviewEnabled = getCFG('findWithinFiles.showPreview');
-    CFG.findWithinFilesPreviewCommand = getCFG('findWithinFiles.previewCommand');
-    CFG.findWithinFilesPreviewWindowConfig = getCFG('findWithinFiles.previewWindowConfig');
+    CFG.openFileInPreviewEditor = getCFG('general.openFileInPreviewEditor');
     CFG.fuzzRipgrepQuery = getCFG('findWithinFiles.fuzzRipgrepQuery');
     CFG.restoreFocusTerminal = getCFG('general.restoreFocusTerminal');
     CFG.useTerminalInEditor = getCFG('general.useTerminalInEditor');
@@ -318,55 +288,6 @@ function handleWorkspaceSettingsChanges() {
     });
 }
 
-/** Check seat belts are on. Also, check terminal commands are on PATH */
-function doFlightCheck(): boolean {
-    const parseKeyValue = (line: string) => {
-        return line.split(': ', 2);
-    };
-
-    if (!commands.flightCheck || !commands.flightCheck.uri) {
-        vscode.window.showErrorMessage('Failed to find flight check script. This is a bug. Please report it.');
-        return false;
-    }
-
-    try {
-        let errStr = '';
-        const kvs: any = {};
-        let out = "";
-        if (os.platform() === 'win32') {
-            out = cp.execFileSync("powershell.exe", ['-ExecutionPolicy', 'Bypass', '-File', `"${commands.flightCheck.uri.fsPath}"`], { shell: true }).toString('utf-8');
-        } else {
-            out = cp.execFileSync(commands.flightCheck.uri.fsPath, { shell: true }).toString('utf-8');
-        }
-        out.split('\n').map(x => {
-            const maybeKV = parseKeyValue(x);
-            if (maybeKV.length === 2) {
-                kvs[maybeKV[0]] = maybeKV[1];
-            }
-        });
-        if (kvs['bat'] === undefined || kvs['bat'] === 'not installed') {
-            errStr += 'bat not found on your PATH. ';
-        }
-        if (kvs['fzf'] === undefined || kvs['fzf'] === 'not installed') {
-            errStr += 'fzf not found on your PATH. ';
-        }
-        if (kvs['rg'] === undefined || kvs['rg'] === 'not installed') {
-            errStr += 'rg not found on your PATH. ';
-        }
-        if (os.platform() !== 'win32' && (kvs['sed'] === undefined || kvs['sed'] === 'not installed')) {
-            errStr += 'sed not found on your PATH. ';
-        }
-        if (errStr !== '') {
-            vscode.window.showErrorMessage(`Failed to activate plugin! Make sure you have the required command line tools installed as outlined in the README. ${errStr}`);
-        }
-
-        return errStr === '';
-    } catch (error) {
-        vscode.window.showErrorMessage(`Failed to run checks before starting extension. Maybe this is helpful: ${error}`);
-        return false;
-    }
-}
-
 /**
  * All the logic that's the same between starting the plugin and re-starting
  * after user settings change
@@ -374,14 +295,6 @@ function doFlightCheck(): boolean {
 function reinitialize() {
     term?.dispose();
     updateConfigWithUserSettings();
-    // console.log('plugin config:', CFG);
-    if (!CFG.flightCheckPassed && !CFG.disableStartupChecks) {
-        CFG.flightCheckPassed = doFlightCheck();
-    }
-
-    if (!CFG.flightCheckPassed && !CFG.disableStartupChecks) {
-        return false;
-    }
 
     //
     // Set up a file watcher. Its contents tell us what files the user selected.
@@ -401,7 +314,6 @@ function reinitialize() {
             vscode.window.showErrorMessage(`Issue detected with extension ${CFG.extensionName}. You may have to reload it.`);
         }
     });
-    return true;
 }
 
 /** Interpreting the terminal output and turning them into a vscode command */
@@ -518,12 +430,6 @@ function createTerminal() {
             HISTCONTROL: 'ignoreboth',  // bash
             // HISTORY_IGNORE: '*',        // zsh
             EXTENSION_PATH: CFG.extensionPath,
-            FIND_FILES_PREVIEW_ENABLED: CFG.findFilesPreviewEnabled ? '1' : '0',
-            FIND_FILES_PREVIEW_COMMAND: CFG.findFilesPreviewCommand,
-            FIND_FILES_PREVIEW_WINDOW_CONFIG: CFG.findFilesPreviewWindowConfig,
-            FIND_WITHIN_FILES_PREVIEW_ENABLED: CFG.findWithinFilesPreviewEnabled ? '1' : '0',
-            FIND_WITHIN_FILES_PREVIEW_COMMAND: CFG.findWithinFilesPreviewCommand,
-            FIND_WITHIN_FILES_PREVIEW_WINDOW_CONFIG: CFG.findWithinFilesPreviewWindowConfig,
             CANARY_FILE: CFG.canaryFile,
             SELECTION_FILE: CFG.selectionFile,
             LAST_QUERY_FILE: CFG.lastQueryFile,
@@ -585,12 +491,6 @@ function getCommandString(cmd: Command, withTextSelection: boolean = true) {
 }
 
 async function executeTerminalCommand(cmd: string) {
-    if (!CFG.flightCheckPassed && !CFG.disableStartupChecks) {
-        if (!reinitialize()) {
-            return;
-        }
-    }
-
     if (cmd === "resumeSearch") {
         // Run the last-run command again
         if (os.platform() === 'win32') {
