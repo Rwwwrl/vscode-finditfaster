@@ -10,7 +10,6 @@
 import * as assert from 'assert';
 import * as cp from 'child_process';
 import * as fs from 'fs';
-import * as os from 'os';
 import { tmpdir } from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -207,7 +206,7 @@ function checkExposedFunctions() {
 function setupConfig(context: vscode.ExtensionContext) {
     CFG.extensionName = PACKAGE.name;
     assert(CFG.extensionName);
-    const localScript = (x: string) => vscode.Uri.file(path.join(context.extensionPath, x) + (os.platform() === 'win32' ? '.ps1' : '.sh'));
+    const localScript = (x: string) => vscode.Uri.file(path.join(context.extensionPath, x) + '.sh');
     commands.findFiles.uri = localScript(commands.findFiles.script);
     commands.findFilesWithType.uri = localScript(commands.findFiles.script);
     commands.findWithinFiles.uri = localScript(commands.findWithinFiles.script);
@@ -321,31 +320,14 @@ function openFiles(data: string) {
     const filePaths = data.split('\n').filter(s => s !== '');
     assert(filePaths.length > 0);
     filePaths.forEach(p => {
-        let [file, lineTmp, charTmp] = p.split(':', 3);
-        // TODO: We might want to just do this the RE way on all platforms?
-        //       On Windows at least the c: makes the split approach problematic.
-        if (os.platform() === 'win32') {
-            let re = /^\s*(?<file>([a-zA-Z][:])?[^:]+)([:](?<lineTmp>\d+))?\s*([:](?<charTmp>\d+))?.*/;
-            let v = p.match(re);
-            if (v && v.groups) {
-                file = v.groups['file'];
-                lineTmp = v.groups['lineTmp'];
-                charTmp = v.groups['charTmp'];
-                //vscode.window.showWarningMessage('File: ' + file + "\nlineTmp: " + lineTmp + "\ncharTmp: " + charTmp);
-            } else {
-                vscode.window.showWarningMessage('Did not match anything in filename: [' + p + "] could not open file!");
-            }
-        }
-        // On windows we sometimes get extra characters that confound
-        // the file lookup.
-        file = file.trim();
+        const [file, lineTmp, charTmp] = p.split(':', 3);
         let selection = undefined;
         if (lineTmp !== undefined) {
             let char = 0;
             if (charTmp !== undefined) {
                 char = parseInt(charTmp) - 1;  // 1 based in rg, 0 based in VS Code
             }
-            let line = parseInt(lineTmp) - 1;  // 1 based in rg, 0 based in VS Code
+            const line = parseInt(lineTmp) - 1;  // 1 based in rg, 0 based in VS Code
             assert(line >= 0);
             assert(char >= 0);
             selection = new vscode.Range(line, char, line, char);
@@ -493,10 +475,6 @@ function getCommandString(cmd: Command, withTextSelection: boolean = true) {
 async function executeTerminalCommand(cmd: string) {
     if (cmd === "resumeSearch") {
         // Run the last-run command again
-        if (os.platform() === 'win32') {
-            vscode.window.showErrorMessage('Resume search is not implemented on Windows. Sorry! PRs welcome.');
-            return;
-        }
         if (CFG.lastCommand === '') {
             vscode.window.showErrorMessage('Cannot resume the last search because no search was run yet.');
             return;
@@ -510,10 +488,8 @@ async function executeTerminalCommand(cmd: string) {
 
     if (!term || term.exitStatus !== undefined) {
         createTerminal();
-        if (os.platform() !== 'win32') {
-            term.sendText('bash');
-            term.sendText('export PS1="::: Terminal allocated for FindItFaster. Do not use. ::: "; clear');
-        }
+        term.sendText('bash');
+        term.sendText('export PS1="::: Terminal allocated for FindItFaster. Do not use. ::: "; clear');
     }
 
     assert(cmd in commands);
@@ -536,7 +512,5 @@ async function executeTerminalCommand(cmd: string) {
 
 function envVarToString(name: string, value: string) {
     // Note we add a space afterwards
-    return (os.platform() === 'win32')
-        ? `$Env:${name}=${value}; `
-        : `${name}=${value} `;
+    return `${name}=${value} `;
 }
