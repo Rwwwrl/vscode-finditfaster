@@ -279,8 +279,13 @@ function updateConfigWithUserSettings() {
 function handleWorkspaceSettingsChanges() {
     updateConfigWithUserSettings();
 
-    // Also re-update when anything changes
-    vscode.workspace.onDidChangeConfiguration(_ => {
+    // Also re-update when one of our own settings changes. Unrelated changes must not get here:
+    // reinitialize() kills the terminal, which would drop a search that is in progress.
+    vscode.workspace.onDidChangeConfiguration(e => {
+        assert(CFG.extensionName);
+        if (!e.affectsConfiguration(CFG.extensionName)) {
+            return;
+        }
         updateConfigWithUserSettings();
         // We need to update the env vars in the terminal
         reinitialize();
